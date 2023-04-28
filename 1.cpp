@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <iomanip>
 
 size_t str_hash(const std::string& data) 
 {
@@ -12,7 +13,7 @@ size_t str_hash(const std::string& data)
 
 
 static constexpr size_t BUCKETS_SIZES_LIST[] = {
-    7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 
+    17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 
     10949, 21911, 43853, 87719, 175447, 350899, 701819, 1403641
 };
 
@@ -33,10 +34,11 @@ template<typename Key, typename Hash=hash<Key>>
 class HashSet {
     static constexpr double LOAD_FACTOR = 0.75;
 public:
-    HashSet() : buckets(nullptr), buckets_count(0), buckets_sizes_list_idx(0), items_count(0) {
-    }
-    ~HashSet() {
-        delete[] buckets;
+    HashSet() : buckets(INITIAL_SIZE), buckets_count(INITIAL_SIZE), buckets_sizes_list_idx(0), items_count(0),
+    hasher(Hash()) {}
+    ~HashSet() 
+    {
+        //delete[] buckets;
     }
 
     HashSet(const HashSet&)=delete;
@@ -46,62 +48,147 @@ public:
     HashSet& operator=(HashSet&&)=delete;
 
 
-    Key* find(const Key& key) 
+    Key* find(const Key& k) 
     {
         if (empty())
         {
             return nullptr;
         }
 
-        size_t cur_pos = hash(key) % buckets_count;
+        size_t cur_pos = hasher(k) % buckets_count;
+       // std::cout << "cur_pos: " << cur_pos << std::endl;
         size_t step = 1;
-        int m = 16;
         size_t steps_limit = buckets_count;
 
         while (step <= steps_limit)
         {
-            if (buckets[cur_pos] != key)
+            if (buckets[cur_pos].key != k || buckets[cur_pos].deleted)
             {
                 cur_pos = (cur_pos + step % m) % buckets_count;
                 step++;
             }
             else
             {
-                return (&buckets[cur_pos]);
+                return &buckets[cur_pos].key;
             }
         }
         return nullptr;
     }
 
-    bool insert(const Key& key) 
+    bool insert(const Key& k) 
     {
+        if (find(k))
+        {
+            return false;
+        }
 
+        if (double(items_count) / buckets_count >= LOAD_FACTOR)
+        {
+            grow();
+        }
+
+        size_t idx = hasher(k) % buckets_count;
+        int step = 1;
+        while(!(buckets[idx].empty || buckets[idx].deleted))
+        {
+            idx = (idx + step % m) % buckets_count;
+            step++;
+        }
+        buckets[idx].key = k;
+        buckets[idx].empty = false;
+        items_count++;
+        return true;
     }
 
-    bool erase(const Key& key) 
+    bool erase(const Key& k) 
     {
+        size_t idx = hasher(k) % buckets_count;
+        int step = 1;
+        while(!(buckets[idx].key == k && !buckets[idx].deleted) && !buckets[idx].empty)
+        {
+            idx = (idx + step % m) % buckets_count;
+            step++;
+        }
 
+        if (buckets[idx].key == k && !buckets[idx].deleted)
+        {
+            buckets[idx].deleted = true;
+            items_count--;
+            return true;
+        }
+        else if (buckets[idx].empty)
+        {
+            return false;
+        }
+        return false;
     }
+
 
     size_t empty() const
     {
         return items_count == 0;
     }
 
-
-private:
-    void grow()
+    void print()
     {
-
+        for (auto node: buckets)
+        {
+            if (node.key == "" || node.deleted)
+                std::cout << "0" << " ";
+            
+            else
+                std::cout << node.key << " ";
+        }
+        std::cout << std::endl;
     }
 
-    std::vector<Key>* buckets;
+private:
+
+    struct Node
+    {
+        Node(): deleted(false), empty(true) {}
+        Node(const Key& k): key(k), deleted(false), empty(true) {}
+
+        Key key;
+        bool deleted;
+        bool empty;
+    };
+
+    void grow()
+    {
+        size_t new_buckets_count = BUCKETS_SIZES_LIST[buckets_sizes_list_idx++];
+        //size_t new_buckets_count = 2 * buckets_count;
+        std::vector<Node> new_buckets(new_buckets_count);
+
+        for (auto node: buckets)
+        {
+            if (node.empty || node.deleted) continue;
+
+            size_t idx = hasher(node.key) % new_buckets_count;
+            int step = 1;
+            while(!new_buckets[idx].empty)
+            {
+                idx = (idx + step % 1024) % new_buckets_count;
+                step++;
+            }
+            new_buckets[idx].key = node.key;
+            new_buckets[idx].empty = false;
+        }
+
+        buckets = new_buckets;
+        buckets_count = new_buckets_count;
+    }
+
+    static constexpr int INITIAL_SIZE = 8;
+    std::vector<Node> buckets;
     size_t buckets_count;
 
     size_t buckets_sizes_list_idx;
     size_t items_count;
 
     Hash hasher;
+
+    int m = 8192;
 };
 
 
@@ -129,5 +216,6 @@ int main() {
         } else {
             std::cout << "FAIL" << std::endl;
         }
+        //set.print();
     }
 }
