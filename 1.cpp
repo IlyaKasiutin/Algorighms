@@ -1,16 +1,19 @@
 #include <iostream>
 #include <string>
+#include <vector>
 
-size_t str_hash(const std::string& data) {
+size_t str_hash(const std::string& data) 
+{
     size_t hash = 0;
     for (char i : data)
-        hash = hash * 13 + i;
+        hash = hash * 13 + i ;
     return hash;
 }
 
 
 static constexpr size_t BUCKETS_SIZES_LIST[] = {
-    7, 17, 37, 73, 149, 251, 509, 1021, 2027, 5003, 10837
+    7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 
+    10949, 21911, 43853, 87719, 175447, 350899, 701819, 1403641
 };
 
 template< class Key > struct hash {
@@ -26,149 +29,97 @@ template<> struct hash<std::string> {
 };
 
 
-template<typename Key, typename Value, typename Hash=hash<Key>>
-class HashMap {
-    struct Node {
-        Node(const Key& k, const Value& v, Node* n) : key(k), value(v), next(n) {
-
-        };
-
-        Key key;
-        Value value;
-
-        Node* next;
-    };
-
-    static constexpr size_t MAX_LEN = 7;
+template<typename Key, typename Hash=hash<Key>>
+class HashSet {
+    static constexpr double LOAD_FACTOR = 0.75;
 public:
-    HashMap() : buckets(nullptr), buckets_count(0), buckets_sizes_list_idx(0), items_count(0) {
-
+    HashSet() : buckets(nullptr), buckets_count(0), buckets_sizes_list_idx(0), items_count(0) {
     }
-    ~HashMap() {
-        for (int i = 0; i < buckets_count; ++i) {
-            Node* cur = buckets[i];
-            while(cur) {
-                Node* tmp = cur;
-                cur = cur->next;
-                delete tmp;
-            }
-        }
+    ~HashSet() {
         delete[] buckets;
     }
 
-    HashMap(const HashMap&)=delete;
-    HashMap(HashMap&&)=delete;
+    HashSet(const HashSet&)=delete;
+    HashSet(HashSet&&)=delete;
 
-    HashMap& operator=(const HashMap&)=delete;
-    HashMap& operator=(HashMap&&)=delete;
+    HashSet& operator=(const HashSet&)=delete;
+    HashSet& operator=(HashSet&&)=delete;
 
 
-    Value* find(const Key& key) {
-        if (!buckets) {
+    Key* find(const Key& key) 
+    {
+        if (empty())
+        {
             return nullptr;
         }
 
-        size_t idx = hasher(key) % buckets_count;
-        Node* cur = buckets[idx];
-        while(cur) {
-            if (cur->key == key) {
-                return &cur->value;
+        size_t cur_pos = hash(key);
+        size_t step = 1;
+        int m = 16;
+        size_t steps_limit = buckets_count / m + 1;
+
+        while (step <= steps_limit)
+        {
+            if (buckets[cur_pos] != key)
+            {
+                cur_pos += step % m;
+                step++;
             }
-            cur = cur->next;
+            else
+            {
+                return (&buckets[cur_pos]);
+            }
         }
         return nullptr;
     }
 
-    bool insert(const Key& key, const Value& value) {
-        if (find(key)) {
-            return false;
-        }
+    bool insert(const Key& key) 
+    {
 
-        if (buckets_count * MAX_LEN >= items_count) {
-            grow();
-        }
-
-        size_t idx = hasher(key) % buckets_count;
-        buckets[idx] = new Node(key, value, buckets[idx]);
-        items_count++;
-        return true;
     }
 
-    bool erase(const Key& key) {
-        if (!buckets) {
-            return false;
-        }
-        size_t idx = hasher(key) % buckets_count;
-        Node* cur = buckets[idx];
-        Node* prev = nullptr;
-        while(cur) {
-            if (cur->key == key) {
-                if (prev == nullptr) {
-                    buckets[idx] = cur->next;
-                } else {
-                    prev->next = cur->next;
-                }
-                items_count--;
-                delete cur;
-                return true;
-            }
-            prev = cur;
-            cur = cur->next;
-        }
-        return false;
+    bool erase(const Key& key) 
+    {
+
+    }
+
+    size_t empty() const
+    {
+        return items_count == 0;
     }
 
 
 private:
-    void grow() {
-        size_t new_buckets_count = BUCKETS_SIZES_LIST[buckets_sizes_list_idx++];
-        Node** new_buckets = new Node*[new_buckets_count];
-        for (int i = 0; i < new_buckets_count; ++i) {
-            new_buckets[i] = nullptr;
-        }
-        for (int i = 0; i < buckets_count; ++i) {
-            Node* cur = buckets[i];
-            while(cur) {
-                Node* tmp = cur;
-                cur = cur->next;
-                size_t new_idx = hasher(tmp->key) % new_buckets_count;
-                tmp->next = new_buckets[new_idx];
-                new_buckets[new_idx] = tmp;
-            }
-        }
-        delete[] buckets;
+    void grow()
+    {
 
-        buckets = new_buckets;
-        buckets_count = new_buckets_count;
     }
 
-    Node** buckets;
+    std::vector<Key>* buckets;
     size_t buckets_count;
 
     size_t buckets_sizes_list_idx;
     size_t items_count;
 
     Hash hasher;
-
-
 };
 
 
 int main() {
-    HashMap<std::string, int> hash;
+    HashSet<std::string> set;
     std::string key;
     char operation;
     while(std::cin >> operation >> key) {
         bool result = false;
         switch (operation) {
             case '+':
-                result = hash.insert(key, 0);
+                result = set.insert(key);
                 break;
             case '-':
-                result = hash.erase(key);
+                result = set.erase(key);
                 break;
             case '?':
-                result = (hash.find(key) != nullptr);
+                result = (set.find(key) != nullptr);
                 break;
             default:
                 break;
