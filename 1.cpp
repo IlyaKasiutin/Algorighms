@@ -53,16 +53,16 @@ public:
             return nullptr;
         }
 
-        size_t cur_pos = hash(key);
+        size_t cur_pos = hash(key) % buckets_count;
         size_t step = 1;
         int m = 16;
-        size_t steps_limit = buckets_count / m + 1;
+        size_t steps_limit = buckets_count;
 
         while (step <= steps_limit)
         {
             if (buckets[cur_pos] != key)
             {
-                cur_pos += step % m;
+                cur_pos = (cur_pos + step % m) % buckets_count;
                 step++;
             }
             else
