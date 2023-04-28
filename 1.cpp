@@ -1,7 +1,14 @@
+/*Реализуйте структуру данных типа “множество строк” на основе динамической хеш-таблицы с открытой адресацией. Хранимые строки непустые и состоят из строчных латинских букв.
+Хеш-функция строки должна быть реализована с помощью вычисления значения многочлена методом Горнера. Начальный размер таблицы должен быть равным 8-ми. 
+Перехеширование выполняйте при добавлении элементов в случае, когда коэффициент заполнения таблицы достигает 3/4.
+Структура данных должна поддерживать операции добавления строки в множество, удаления строки из множества и проверки принадлежности данной строки множеству.
+
+Вариант 1. Для разрешения коллизий используйте квадратичное пробирование.
+i-ая проба g(k, i)=g(k, i-1) + i (mod m). m - степень двойки.*/
+
 #include <iostream>
 #include <string>
 #include <vector>
-#include <iomanip>
 
 size_t str_hash(const std::string& data) 
 {
@@ -17,7 +24,7 @@ static constexpr size_t BUCKETS_SIZES_LIST[] = {
     10949, 21911, 43853, 87719, 175447, 350899, 701819, 1403641
 };
 
-template< class Key > struct hash {
+template<typename Key> struct hash {
     size_t operator()(const Key& value) {
         return value;
     }
@@ -36,48 +43,43 @@ class HashSet {
 public:
     HashSet() : buckets(INITIAL_SIZE), buckets_count(INITIAL_SIZE), buckets_sizes_list_idx(0), items_count(0),
     hasher(Hash()) {}
-    ~HashSet() 
-    {
-        //delete[] buckets;
-    }
+    ~HashSet() {}
 
     HashSet(const HashSet&)=delete;
     HashSet(HashSet&&)=delete;
 
-    HashSet& operator=(const HashSet&)=delete;
-    HashSet& operator=(HashSet&&)=delete;
+    HashSet& operator=(const HashSet&) = delete;
+    HashSet& operator=(HashSet&&) = delete;
 
 
-    Key* find(const Key& k) 
+    int find(const Key& k) 
     {
         if (empty())
         {
-            return nullptr;
+            return -1;
         }
 
         size_t cur_pos = hasher(k) % buckets_count;
-       // std::cout << "cur_pos: " << cur_pos << std::endl;
         size_t step = 1;
-        size_t steps_limit = buckets_count;
 
-        while (step <= steps_limit)
+        while (step <= buckets_count && !buckets[cur_pos].empty)
         {
-            if (buckets[cur_pos].key != k || buckets[cur_pos].deleted)
+            if (!(buckets[cur_pos].key == k && !buckets[cur_pos].deleted))
             {
                 cur_pos = (cur_pos + step % m) % buckets_count;
                 step++;
             }
             else
             {
-                return &buckets[cur_pos].key;
+                return cur_pos;
             }
         }
-        return nullptr;
+        return -1;
     }
 
     bool insert(const Key& k) 
     {
-        if (find(k))
+        if (find(k) != -1)
         {
             return false;
         }
@@ -96,50 +98,28 @@ public:
         }
         buckets[idx].key = k;
         buckets[idx].empty = false;
+        buckets[idx].deleted = false;
         items_count++;
         return true;
     }
 
     bool erase(const Key& k) 
     {
-        size_t idx = hasher(k) % buckets_count;
-        int step = 1;
-        while(!(buckets[idx].key == k && !buckets[idx].deleted) && !buckets[idx].empty)
-        {
-            idx = (idx + step % m) % buckets_count;
-            step++;
-        }
-
-        if (buckets[idx].key == k && !buckets[idx].deleted)
-        {
-            buckets[idx].deleted = true;
-            items_count--;
-            return true;
-        }
-        else if (buckets[idx].empty)
+        int pos = find(k);
+        if (pos == -1)
         {
             return false;
         }
-        return false;
+
+        buckets[pos].deleted = true;
+        items_count--;
+        return true;
     }
 
 
     size_t empty() const
     {
         return items_count == 0;
-    }
-
-    void print()
-    {
-        for (auto node: buckets)
-        {
-            if (node.key == "" || node.deleted)
-                std::cout << "0" << " ";
-            
-            else
-                std::cout << node.key << " ";
-        }
-        std::cout << std::endl;
     }
 
 private:
@@ -157,7 +137,6 @@ private:
     void grow()
     {
         size_t new_buckets_count = BUCKETS_SIZES_LIST[buckets_sizes_list_idx++];
-        //size_t new_buckets_count = 2 * buckets_count;
         std::vector<Node> new_buckets(new_buckets_count);
 
         for (auto node: buckets)
@@ -166,7 +145,7 @@ private:
 
             size_t idx = hasher(node.key) % new_buckets_count;
             int step = 1;
-            while(!new_buckets[idx].empty)
+            while(!new_buckets[idx].empty && step < buckets_count)
             {
                 idx = (idx + step % 1024) % new_buckets_count;
                 step++;
@@ -206,7 +185,7 @@ int main() {
                 result = set.erase(key);
                 break;
             case '?':
-                result = (set.find(key) != nullptr);
+                result = (set.find(key) != -1);
                 break;
             default:
                 break;
@@ -216,6 +195,5 @@ int main() {
         } else {
             std::cout << "FAIL" << std::endl;
         }
-        //set.print();
     }
 }
