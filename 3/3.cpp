@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <deque>
 
 template <class T>
 struct DefaultComparator
@@ -70,6 +71,20 @@ public:
     bool find(const Key &key)
     {
         return find_aux(root, key);
+    }
+
+    void print()
+    {
+        std::deque<Node*> d = bfs();
+        std::cout << d.size() << std::endl;
+
+        for (auto node: d)
+        {
+            for (int value: node->keys)
+            {
+                std::cout << value << " ";
+            }
+        }
     }
  
 private:
@@ -160,6 +175,26 @@ private:
             insert_non_full(node->children[pos + 1], key);
         }
     }
+
+    std::deque<Node*> bfs()
+    {
+        std::deque<Node*> list;
+        std::deque<Node*> buf;
+        buf.push_back(root);
+        while (buf.size() > 0)
+        {
+            list.push_back(buf.front());
+            if (!buf.front()->leaf)
+            {
+                for (int i = 0; i < buf.front()->children.size(); i++)
+                {
+                    buf.push_back(buf.front()->children[i]);
+                }
+            }
+            buf.pop_front();
+        }
+        return list;
+    }
  
     
     
@@ -176,16 +211,18 @@ int main()
     std::cin >> t;
     BTree<int> b_tree(t);
     int value = 0;
-    std::stringstream ss;
-    std::string input;
-    std::cin >> input;
+    std::string input = "0 1 2 3 4 5 6 7 8 9";
+    //std::cin >> input;
+    std::cout << "str: " << input << std::endl;
+    std::stringstream ss(input);
 
-    while (!ss.eof())
+    while (ss >> value)
     {
-        ss >> value;
+        std::cout << "Inserting: " << value << std::endl;
         b_tree.insert(value);
     }
 
+    b_tree.print();
     std::cout << "OK" << std::endl;
     return 0;
 }
