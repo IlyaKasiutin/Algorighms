@@ -1,5 +1,11 @@
+/*Дано число N < 10^6 и последовательность целых чисел из [-231..231] длиной N.
+Требуется построить бинарное дерево поиска, заданное наивным порядком вставки. 
+Т.е., при добавлении очередного числа K в дерево с корнем root, если root→Key ≤ K, 
+то узел K добавляется в правое поддерево root; иначе в левое поддерево root.
+Выведите элементы в порядке level-order (по слоям, “в ширину”).*/
+
 #include <iostream>
-#include <queue>
+#include <deque>
 #include <vector>
 
 template <typename T>
@@ -22,7 +28,17 @@ public:
     BinaryTree& operator=(const BinaryTree&) = delete;
     BinaryTree& operator=(BinaryTree&&) = delete;
 
-    ~BinaryTree() {}
+    ~BinaryTree()
+    {
+        std::deque<Node*> q = bfs();
+        Node* cur_node;
+        while (!q.empty())
+        {
+            cur_node = q.back();
+            q.pop_back();
+            delete cur_node;
+        }
+    }
 
     void insert(const T& val)
     {
@@ -33,48 +49,41 @@ public:
         else
         {
             Node* cur_node = root;
-            while (cur_node)
+            while (true)
             {
                 if (comp(cur_node->value, val))
                 {
-                    cur_node = cur_node->right;
+                    if (!cur_node->right)
+                    {
+                        cur_node->right = new Node(val);
+                        break;
+                    }
+                    else
+                        cur_node = cur_node->right;
                 }
                 else
                 {
-                    cur_node = cur_node->left;
+                    if (!cur_node->left)
+                    {
+                        cur_node->left = new Node(val);
+                        break;
+                    }
+                    else
+                        cur_node = cur_node->left;
                 }
             }
-            cur_node = new Node(val);
         }
     }
 
-    std::queue<T> bfs(void (*operation_function)(std::queue<T>&) = nullptr)
+    void print()
     {
-        std::queue<T> list;
-        std::vector<T> output;
-        Node* cur_node = root;
-        std::cout << root->value << std::endl;
-        list.push(root->value);
-        while (list.size() > 0)
+        std::deque<Node*> q = bfs();
+        while (!q.empty())
         {
-            auto elem = list.front();
-            std::cout << elem << elem->right << std::endl;
-            output.push_back(list.front());
-            /*if (list.front()->left)
-                list.push(list.front().left.value);
-            if (list.front()->right)
-                list.push(list.front().right.value);*/
-            list.pop();
+            std::cout << q.front()->value << " ";
+            q.pop_front();
         }
-
-        std::cout << "queue: ";
-        for (auto &val: output)
-            std::cout << val << " ";
         std::cout << std::endl;
-
-        if (operation_function)
-            operation_function(list);
-        return list;
     }
     
 private:
@@ -87,15 +96,26 @@ private:
     };
     Node* root;
     Comparator comp;
-};
 
-template <typename T>
-void print(std::queue<T>& q)
-{
-    for (auto elem: q)
-        std::cout << q << " ";
-    std::cout << std::endl;
-}
+    std::deque<Node*> bfs()
+    {
+        std::deque<Node*> list;
+        std::deque<Node*> buf;
+        buf.push_back(root);
+        while (buf.size() > 0)
+        {
+            list.push_back(buf.front());
+            if (buf.front()->left)
+                buf.push_back(buf.front()->left);
+
+            if (buf.front()->right)
+                buf.push_back(buf.front()->right);
+
+            buf.pop_front();
+        }
+        return list;
+    }
+};
 
 int main()
 {
@@ -110,7 +130,6 @@ int main()
         tree.insert(val);
     }
     
-    tree.bfs();
-    std::cout << "ok" << std::endl;
+    tree.print();
     return 0;
 }
