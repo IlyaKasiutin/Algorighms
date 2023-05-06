@@ -8,7 +8,7 @@
 template <class T>
 struct DefaultComparator
 {
-    int operator () (const T& l, const T& r) const 
+    int operator () (const T& l, const T& r) const
     {
         if ( l < r ) return -1;
         if ( l > r ) return 1;
@@ -22,11 +22,11 @@ class BTree
 public:
     struct Node
     {
-        Node(bool leaf)
-        : leaf(leaf)
+        Node(bool leaf, int h)
+                : leaf(leaf), height(h)
         {
         }
- 
+
         ~Node()
         {
             for (Node* child: children)
@@ -34,40 +34,53 @@ public:
                 delete child;
             }
         }
- 
+
         bool leaf;
+        int height;
         std::vector<Key> keys;
         std::vector<Node*> children;
+
+        void print()
+        {
+            std::cout << "keys size: " << keys.size() << std::endl;
+            std::cout << "keys: [";
+            for (auto key: keys)
+            {
+                std::cout << key << " ";
+            }
+            std::cout << "]" << std::endl;
+            std::cout << "children: " << children.size() << std::endl << std::endl;
+        }
     };
- 
+
     BTree(size_t min_degree, Comparator comp = Comparator())
-    : root(nullptr), t(min_degree), comp(comp)
+            : root(nullptr), t(min_degree), comp(comp)
     {
         assert(min_degree >= 2);
     }
- 
+
     ~BTree()
     {
         if (root)
             delete root;
     }
- 
+
     void insert(const Key &key)
     {
         if (!root)
-            root = new Node(true);
-        
+            root = new Node(true, 1);
+
         if (is_node_full(root))
         {
-            Node *newRoot = new Node(false);
+            Node *newRoot = new Node(false, 1);
             newRoot->children.push_back(root);
             root = newRoot;
             split(root, 0);
         }
- 
+
         insert_non_full(root, key);
     }
- 
+
     bool find(const Key &key)
     {
         return find_aux(root, key);
@@ -76,29 +89,51 @@ public:
     void print()
     {
         std::deque<Node*> d = bfs();
-        std::cout << d.size() << std::endl;
-
+        int cur_height = 1;
         for (auto node: d)
         {
+            if (node->height != cur_height)
+            {
+                std::cout << std::endl;
+                cur_height = node->height;
+            }
             for (int value: node->keys)
             {
                 std::cout << value << " ";
             }
         }
+        std::cout << std::endl;
     }
- 
+
 private:
+    int height(Node* node) const
+    {
+        return node ? node->height : 0;
+    }
+
+    void fix_height(Node* node)
+    {
+        if (node->leaf)
+            return;
+
+        for (int i = 0; i < node->children.size(); i++)
+        {
+            node->children[i]->height = node->height + 1;
+            fix_height(node->children[i]);
+        }
+    }
+
     bool is_node_full(Node *node)
     {
         return node->keys.size() == 2*t - 1;
     }
- 
+
     bool find_aux(Node* node, const Key &key)
     {
         int i = 0;
         while (i < node->keys.size() && key > node->keys[i])
             i++;
- 
+
         if (i < node->keys.size() && key == node->keys[i])
             return true;
         else if (node->leaf)
@@ -106,15 +141,31 @@ private:
         else
             return find_aux(node->children[i], key);
     }
- 
+
     void split(Node *node, size_t index)
     {
-        Node* new_node = new Node(false);
+        Node* new_node = new Node(false, node->height + 1);
         Node* split_node = node->children[index];
+
+        /*std::cout << "new_node" << std::endl;
+        new_node->print();
+        std::cout << "split_node" << std::endl;
+        split_node->print();
+        std::cout << "node" << std::endl;
+        node->print();*/
+
         new_node->leaf = split_node->leaf;
         for (int j = 0; j < t - 1; j++)
         {
+            //std::cout << "replaced " << split_node->keys[t + j] << std::endl;
             new_node->keys.push_back(split_node->keys[t + j]);
+
+            /*std::cout << "new_node" << std::endl;
+            new_node->print();
+            std::cout << "split_node" << std::endl;
+            split_node->print();
+            std::cout << "node" << std::endl;
+            node->print();*/
         }
 
         if (!split_node->leaf)
@@ -122,28 +173,65 @@ private:
             for (int j = 0; j < t; j++)
             {
                 new_node->children.push_back(split_node->children[t + j]);
+
+                /*std::cout << "new_node" << std::endl;
+                new_node->print();
+                std::cout << "split_node" << std::endl;
+                split_node->print();
+                std::cout << "node" << std::endl;
+                node->print();*/
             }
         }
         split_node->keys.resize(t - 1);
+        //split_node->children.resize(t);
         split_node->children.resize(t);
 
+        /*std::cout << "new_node" << std::endl;
+        new_node->print();
+        std::cout << "split_node" << std::endl;
+        split_node->print();
+        std::cout << "node" << std::endl;
+        node->print();*/
+
         node->children.push_back(nullptr);
-        for (int j = node->keys.size() - 1; j > index; j--)
+        //std::cout << "keys size: " << node->keys.size() << std::endl;
+        for (int j = node->keys.size() - 1; j > index && j >= 0; --j)
         {
             node->children[j] = node->children[j - 1];
         }
-        node->children[index] = new_node;
+        node->children[index + 1] = new_node;
+
+        /*std::cout << "new_node" << std::endl;
+        new_node->print();
+        std::cout << "split_node" << std::endl;
+        split_node->print();
+        std::cout << "node" << std::endl;
+        node->print();*/
 
         node->keys.push_back(0);
-        for (int j = node->keys.size() - 1; j > index - 1; j--)
+        for (int j = node->keys.size() - 1; j > index - 1; --j)
         {
             node->keys[j] = node->keys[j - 1];
+
+            /*std::cout << "new_node" << std::endl;
+            new_node->print();
+            std::cout << "split_node" << std::endl;
+            split_node->print();
+            std::cout << "node" << std::endl;
+            node->print();*/
         }
-        node->keys[index - 1] = split_node->keys[t - 1];
+        node->keys[index] = split_node->keys[t - 1];
+
+        /*std::cout << "new_node" << std::endl;
+        new_node->print();
+        std::cout << "split_node" << std::endl;
+        split_node->print();
+        std::cout << "node" << std::endl;
+        node->print();*/
 
 
     }
- 
+
     void insert_non_full(Node *node, const Key &key)
     {
         int pos = node->keys.size() - 1;
@@ -163,7 +251,7 @@ private:
             {
                 pos--;
             }
- 
+
             if (is_node_full(node->children[pos + 1]))
             {
                 split(node, pos + 1);
@@ -178,6 +266,7 @@ private:
 
     std::deque<Node*> bfs()
     {
+        fix_height(root);
         std::deque<Node*> list;
         std::deque<Node*> buf;
         buf.push_back(root);
@@ -195,14 +284,14 @@ private:
         }
         return list;
     }
- 
-    
-    
- 
+
+
+
+
     Node *root;
     Comparator comp;
     size_t t; // minimum degree
-  
+
 };
 
 int main()
@@ -211,18 +300,9 @@ int main()
     std::cin >> t;
     BTree<int> b_tree(t);
     int value = 0;
-    std::string input = "0 1 2 3 4 5 6 7 8 9";
-    //std::cin >> input;
-    std::cout << "str: " << input << std::endl;
-    std::stringstream ss(input);
-
-    while (ss >> value)
-    {
-        std::cout << "Inserting: " << value << std::endl;
+    while (std::cin >> value)
         b_tree.insert(value);
-    }
 
     b_tree.print();
-    std::cout << "OK" << std::endl;
     return 0;
 }
