@@ -1,7 +1,12 @@
+/*Постройте B-дерево минимального порядка t и выведите его по слоям.
+В качестве ключа используются числа, лежащие в диапазоне [0..232-1]
+Требования:
+    B-дерево должно быть реализовано в виде шаблонного класса.
+    Решение должно поддерживать передачу функции сравнения снаружи.*/
+
 #include <iostream>
 #include <assert.h>
 #include <vector>
-#include <string>
 #include <sstream>
 #include <deque>
 
@@ -147,25 +152,10 @@ private:
         Node* new_node = new Node(false, node->height + 1);
         Node* split_node = node->children[index];
 
-        /*std::cout << "new_node" << std::endl;
-        new_node->print();
-        std::cout << "split_node" << std::endl;
-        split_node->print();
-        std::cout << "node" << std::endl;
-        node->print();*/
-
         new_node->leaf = split_node->leaf;
         for (int j = 0; j < t - 1; j++)
         {
-            //std::cout << "replaced " << split_node->keys[t + j] << std::endl;
             new_node->keys.push_back(split_node->keys[t + j]);
-
-            /*std::cout << "new_node" << std::endl;
-            new_node->print();
-            std::cout << "split_node" << std::endl;
-            split_node->print();
-            std::cout << "node" << std::endl;
-            node->print();*/
         }
 
         if (!split_node->leaf)
@@ -173,63 +163,24 @@ private:
             for (int j = 0; j < t; j++)
             {
                 new_node->children.push_back(split_node->children[t + j]);
-
-                /*std::cout << "new_node" << std::endl;
-                new_node->print();
-                std::cout << "split_node" << std::endl;
-                split_node->print();
-                std::cout << "node" << std::endl;
-                node->print();*/
             }
         }
         split_node->keys.resize(t - 1);
-        //split_node->children.resize(t);
         split_node->children.resize(t);
 
-        /*std::cout << "new_node" << std::endl;
-        new_node->print();
-        std::cout << "split_node" << std::endl;
-        split_node->print();
-        std::cout << "node" << std::endl;
-        node->print();*/
-
         node->children.push_back(nullptr);
-        //std::cout << "keys size: " << node->keys.size() << std::endl;
-        for (int j = node->keys.size() - 1; j > index && j >= 0; --j)
+        for (int j = node->children.size() - 1; j > index; --j)
         {
             node->children[j] = node->children[j - 1];
         }
         node->children[index + 1] = new_node;
 
-        /*std::cout << "new_node" << std::endl;
-        new_node->print();
-        std::cout << "split_node" << std::endl;
-        split_node->print();
-        std::cout << "node" << std::endl;
-        node->print();*/
-
         node->keys.push_back(0);
-        for (int j = node->keys.size() - 1; j > index - 1; --j)
+        for (int j = node->keys.size() - 1; j > index; --j)
         {
             node->keys[j] = node->keys[j - 1];
-
-            /*std::cout << "new_node" << std::endl;
-            new_node->print();
-            std::cout << "split_node" << std::endl;
-            split_node->print();
-            std::cout << "node" << std::endl;
-            node->print();*/
         }
         node->keys[index] = split_node->keys[t - 1];
-
-        /*std::cout << "new_node" << std::endl;
-        new_node->print();
-        std::cout << "split_node" << std::endl;
-        split_node->print();
-        std::cout << "node" << std::endl;
-        node->print();*/
-
-
     }
 
     void insert_non_full(Node *node, const Key &key)
