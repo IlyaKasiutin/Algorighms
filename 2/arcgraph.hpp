@@ -1,12 +1,12 @@
 #include "igraph.hpp"
-#include <set>
+#include <utility>
 
-class SetGraph: public IGraph
+class ArcGraph: public IGraph
 {
 
 public:
-    SetGraph(int vertex_num);
-    SetGraph(const IGraph& graph);
+    ArcGraph(int vertex_num);
+    ArcGraph(const IGraph& graph);
 
     virtual void AddEdge(int from, int to) override;
     virtual int VerticesCount() const  override;
@@ -14,9 +14,10 @@ public:
     virtual std::vector<int> GetNextVertices(int vertex) const override;
     virtual std::vector<int> GetPrevVertices(int vertex) const override;
 
-    virtual ~SetGraph() {}
+    virtual ~ArcGraph() {}
 
 private:
-    std::vector<std::set<int>> adjacencySet;
+    std::vector<std::pair<int, int>> edgesList;
+    int vertices_count;
 
 };

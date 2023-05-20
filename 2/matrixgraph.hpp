@@ -1,12 +1,11 @@
 #include "igraph.hpp"
-#include <set>
 
-class SetGraph: public IGraph
+class MatrixGraph: public IGraph
 {
 
 public:
-    SetGraph(int vertex_num);
-    SetGraph(const IGraph& graph);
+    MatrixGraph(int vertex_num);
+    MatrixGraph(const IGraph& graph);
 
     virtual void AddEdge(int from, int to) override;
     virtual int VerticesCount() const  override;
@@ -14,9 +13,9 @@ public:
     virtual std::vector<int> GetNextVertices(int vertex) const override;
     virtual std::vector<int> GetPrevVertices(int vertex) const override;
 
-    virtual ~SetGraph() {}
+    ~MatrixGraph() {}
 
 private:
-    std::vector<std::set<int>> adjacencySet;
+    std::vector<std::vector<int>> adjacencyMatrix;
 
 };
