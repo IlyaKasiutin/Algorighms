@@ -1,5 +1,3 @@
-# Условия задач
-
 Оригинал: https://docs.google.com/document/d/1Lv4xzehypQLz56H2BFKiTnP3tMgEHQ637jmBXXCc_LI/edit# 
 
 
